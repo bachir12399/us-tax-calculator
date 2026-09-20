@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crosswire — US State &amp; B2B Remote Work Tax Calculator</title>
+<meta name="description" content="Estimate federal, state, and self-employment tax as a remote 1099 / B2B contractor. Compare residency vs. work state, see net take-home pay, and plan quarterly payments.">
+<meta name="theme-color" content="#F7F8FA">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💸</text></svg>">
+
+<!-- Open Graph -->
+<meta property="og:title" content="Crosswire — US State & B2B Remote Work Tax Calculator">
+<meta property="og:description" content="Federal, state, and self-employment tax estimates for remote 1099 contractors, built around your residency and work state.">
+<meta property="og:type" content="website">
+
+<!-- Fonts: Inter (UI/body) + Space Grotesk (numeric/display) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+<!-- Tailwind CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- FAQ structured data for SEO -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Do 1099 contractors pay state tax based on where they live or where the client is located?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Generally, income tax follows where the work is physically performed and where you're a resident, not where your client is headquartered. A contractor based in Texas working remotely for a New York company typically doesn't owe New York state tax, since Texas has no income tax and the work isn't performed in New York." }
+    },
+    {
+      "@type": "Question",
+      "name": "What is the convenience of the employer rule?",
+      "acceptedAnswer": { "@type": "Answer", "text": "A small number of states, including New York and Connecticut, tax nonresident employees on income earned while working remotely if the arrangement is for the employee's own convenience rather than a genuine business requirement. It applies mainly to payroll employees, and its reach for independent contractors is narrower and less settled." }
+    },
+    {
+      "@type": "Question",
+      "name": "Do I need to file a tax return in more than one state?",
+      "acceptedAnswer": { "@type": "Answer", "text": "You may, if you're a resident of one state and perform work while physically present in another. Most states offer a credit for taxes paid to another state on the same income, so you typically aren't taxed twice on identical earnings, though you may still need to file two returns." }
+    },
+    {
+      "@type": "Question",
+      "name": "How much should I set aside for self-employment tax?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Self-employment tax covers Social Security and Medicare and totals 15.3% on roughly 92.35% of your net business profit, up to the Social Security wage base, plus 2.9% Medicare on everything above that. Many contractors set aside 25 to 30% of net profit to cover both self-employment and income tax." }
+    },
+    {
+      "@type": "Question",
+      "name": "What business expenses can reduce my taxable income?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Common deductible costs include a home office, business software and subscriptions, equipment, professional services, business travel and mileage, and health insurance premiums for the self-employed. Keeping receipts and a simple expense log throughout the year makes filing far easier." }
+    },
+    {
+      "@type": "Question",
+      "name": "When are quarterly estimated tax payments due?",
+      "acceptedAnswer": { "@type": "Answer", "text": "The IRS generally expects estimated payments four times a year, due around April 15, June 15, September 15, and January 15 of the following year. Many states with an income tax run on a similar quarterly schedule." }
+    },
+    {
+      "@type": "Question",
+      "name": "Which states have no personal income tax?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Texas, Florida, Washington, Nevada, Wyoming, South Dakota, Alaska, and Tennessee don't tax personal income. New Hampshire only taxes interest and dividend income, not wages or business profit." }
+    }
+  ]
+}
+</script>
+
+<style>
+  :root{
+    --c-bg:#F7F8FA;
+    --c-surface:#FFFFFF;
+    --c-border:#E4E7EC;
+    --c-text:#131A29;
+    --c-text-soft:#6B7280;
+    --c-indigo:#5B5FEF;
+    --c-indigo-soft:#EEF0FF;
+    --c-emerald:#0E9F6E;
+    --c-emerald-soft:#E9F9F1;
+    --c-violet:#9089D6;
+    --c-amber:#D9970F;
+    --c-slate-seg:#D0D5DD;
+  }
+  html{scroll-behavior:smooth;}
+  body{
+    font-family:'Inter',ui-sans-serif,system-ui,sans-serif;
+    background:var(--c-bg);
+    color:var(--c-text);
+  }
+  .font-display{font-family:'Space Grotesk',ui-sans-serif,sans-serif;}
+  .tabular{font-variant-numeric:tabular-nums;}
+
+  /* focus visibility */
+  a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible{
+    outline:2px solid var(--c-indigo);
+    outline-offset:2px;
+    border-radius:6px;
+  }
+
+  /* one orchestrated entrance for the calculator, not per-card */
+  @keyframes riseIn{
+    from{opacity:0; transform:translateY(10px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+  .rise-in{animation:riseIn .55s cubic-bezier(.16,1,.3,1) both;}
+
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto;}
+    .rise-in{animation:none;}
+    *{transition-duration:.001ms !important;}
+  }
+
+  .swap-icon{transition:transform .35s cubic-bezier(.16,1,.3,1);}
+  .swap-spin{transform:rotate(180deg);}
+
+  select{
+    -webkit-appearance:none;
+    appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat:no-repeat;
+    background-position:right 0.85rem center;
+  }
+
+  details > summary{list-style:none;}
+  details > summary::-webkit-details-marker{display:none;}
+  .faq-chevron{transition:transform .25s ease;}
+  details[open] .faq-chevron{transform:rotate(180deg);}
+
+  .bar-seg{transition:width .4s cubic-bezier(.16,1,.3,1);}
+</style>
+</head>
+
+<body class="min-h-screen">
+
+<!-- ============ HEADER ============ -->
+<header class="border-b border-[var(--c-border)] bg-[var(--c-surface)]/80 backdrop-blur">
+  <div class="max-w-6xl mx-auto px-5 sm:px-8 py-4 flex items-center justify-between">
+    <div class="flex items-baseline gap-2.5">
+      <span class="font-display text-lg font-semibold tracking-tight">Crosswire</span>
+      <span class="hidden sm:inline text-sm text-[var(--c-text-soft)]">Tax estimates for remote &amp; B2B contractors</span>
+    </div>
+    <span class="text-xs px-2.5 py-1 rounded-full border border-[var(--c-border)] text-[var(--c-text-soft)]">Estimates, not filing</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============ HERO + CALCULATOR ============ -->
+  <section id="calculator" aria-labelledby="calc-heading" class="max-w-6xl mx-auto px-5 sm:px-8 pt-10 sm:pt-14 pb-16">
+
+    <div class="max-w-2xl mb-9">
+      <h1 id="calc-heading" class="font-display text-3xl sm:text-4xl font-semibold tracking-tight leading-tight">
+        Know your real take-home before you sign the contract.
+      </h1>
+      <p class="mt-3 text-[var(--c-text-soft)] text-base leading-relaxed">
+        Crosswire estimates federal, state, and self-employment tax across state lines, so independent
+        contractors and remote B2B workers can compare offers and plan quarterly payments with real numbers.
+      </p>
+    </div>
+
+    <div class="grid lg:grid-cols-[380px_1fr] gap-6 rise-in">
+
+      <!-- ===== INPUTS CARD ===== -->
+      <section aria-labelledby="inputs-heading" class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-2xl p-6 h-fit lg:sticky lg:top-6">
+        <h2 id="inputs-heading" class="font-display text-lg font-semibold mb-1">Your situation</h2>
+        <p class="text-sm text-[var(--c-text-soft)] mb-6">Every field updates your results instantly.</p>
+
+        <div class="space-y-5">
+
+          <!-- Residency state -->
+          <div>
+            <label for="originState" class="block text-sm font-medium mb-1.5">Residency state</label>
+            <select id="originState" class="w-full rounded-lg border border-[var(--c-border)] bg-white pl-3 pr-9 py-2.5 text-sm focus:border-[var(--c-indigo)] transition-colors"></select>
+            <p id="originDesc" class="mt-1.5 text-xs text-[var(--c-text-soft)]"></p>
+          </div>
+
+          <!-- Swap control -->
+          <div class="flex items-center gap-3">
+            <div class="h-px flex-1 bg-[var(--c-border)]"></div>
+            <button id="swapBtn" type="button" aria-label="Swap residency and work states"
+              class="w-8 h-8 flex items-center justify-center rounded-full border border-[var(--c-border)] bg-white text-[var(--c-text-soft)] hover:text-[var(--c-indigo)] hover:border-[var(--c-indigo)] transition-colors">
+              <svg id="swapIcon" class="swap-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                <polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+              </svg>
+            </button>
+            <div class="h-px flex-1 bg-[var(--c-border)]"></div>
+          </div>
+
+          <!-- Work state -->
+          <div>
+            <label for="workState" class="block text-sm font-medium mb-1.5">Work location state</label>
+            <select id="workState" class="w-full rounded-lg border border-[var(--c-border)] bg-white pl-3 pr-9 py-2.5 text-sm focus:border-[var(--c-indigo)] transition-colors"></select>
+            <p id="workDesc" class="mt-1.5 text-xs text-[var(--c-text-soft)]"></p>
+            <p class="mt-1 text-xs text-[var(--c-text-soft)]">Where you're physically located while doing the work — often the same as your residency for fully remote roles.</p>
+          </div>
+
+          <!-- Filing status -->
+          <div>
+            <span class="block text-sm font-medium mb-1.5">Filing status</span>
+            <div class="inline-flex w-full rounded-lg bg-slate-100 p-1 gap-1" role="group" aria-label="Filing status">
+              <button type="button" data-filing="single" class="filing-btn flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors" aria-pressed="true">Single</button>
+              <button type="button" data-filing="married" class="filing-btn flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors" aria-pressed="false">Married filing jointly</button>
+            </div>
+          </div>
+
+          <!-- Gross income -->
+          <div>
+            <label for="grossIncome" class="block text-sm font-medium mb-1.5">Annual gross income / contract amount</label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--c-text-soft)] text-sm">$</span>
+              <input id="grossIncome" type="number" inputmode="decimal" min="0" step="1000" value="120000"
+                class="w-full rounded-lg border border-[var(--c-border)] bg-white pl-6 pr-3 py-2.5 text-sm focus:border-[var(--c-indigo)] transition-colors tabular">
+            </div>
+          </div>
+
+          <!-- Expenses -->
+          <div>
+            <label for="bizExpenses" class="block text-sm font-medium mb-1.5">Estimated annual business expenses</label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--c-text-soft)] text-sm">$</span>
+              <input id="bizExpenses" type="number" inputmode="decimal" min="0" step="500" value="15000"
+                class="w-full rounded-lg border border-[var(--c-border)] bg-white pl-6 pr-3 py-2.5 text-sm focus:border-[var(--c-indigo)] transition-colors tabular">
+            </div>
+            <p class="mt-1.5 text-xs text-[var(--c-text-soft)]">Software, equipment, home office, mileage, insurance, and similar deductible costs.</p>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ===== RESULTS ===== -->
+      <section aria-labelledby="results-heading" aria-live="polite" class="space-y-6">
+        <h2 id="results-heading" class="sr-only">Your tax estimate</h2>
+
+        <!-- Headline card -->
+        <div class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-2xl p-6 sm:p-7 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_1px_3px_rgba(16,24,40,0.06)]">
+          <div class="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p class="text-sm text-[var(--c-text-soft)] mb-1">Estimated take-home pay</p>
+              <p id="netIncomeBig" class="font-display tabular text-4xl sm:text-5xl font-semibold" style="color:var(--c-emerald)">$0</p>
+              <p id="grossSub" class="mt-1.5 text-sm text-[var(--c-text-soft)]">of $0 gross, after taxes and business expenses</p>
+            </div>
+            <div class="flex flex-col items-start sm:items-end gap-1">
+              <span class="text-xs text-[var(--c-text-soft)]">Effective tax rate</span>
+              <span id="effectiveRateChip" class="font-display tabular text-2xl font-semibold">0%</span>
+            </div>
+          </div>
+
+          <!-- Period toggle -->
+          <div class="mt-6 flex items-center gap-2">
+            <span class="text-xs text-[var(--c-text-soft)] mr-1">Show as</span>
+            <div class="inline-flex rounded-lg bg-slate-100 p-1 gap-1" role="group" aria-label="Display period">
+              <button type="button" data-period="annual" class="period-btn px-3 py-1.5 rounded-md text-xs font-medium transition-colors" aria-pressed="true">Annual</button>
+              <button type="button" data-period="monthly" class="period-btn px-3 py-1.5 rounded-md text-xs font-medium transition-colors" aria-pressed="false">Monthly</button>
+              <button type="button" data-period="quarterly" class="period-btn px-3 py-1.5 rounded-md text-xs font-medium transition-colors" aria-pressed="false">Quarterly</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Metric cards -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl p-4">
+            <p class="text-xs text-[var(--c-text-soft)] mb-1">Federal income tax</p>
+            <p id="cardFederalAmt" class="font-display tabular text-xl font-semibold">$0</p>
+            <p id="cardFederalPct" class="text-xs text-[var(--c-text-soft)] mt-0.5">0% of gross</p>
+          </div>
+          <div class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl p-4">
+            <p id="cardStateLabel" class="text-xs text-[var(--c-text-soft)] mb-1">State income tax</p>
+            <p id="cardStateAmt" class="font-display tabular text-xl font-semibold">$0</p>
+            <p id="cardStatePct" class="text-xs text-[var(--c-text-soft)] mt-0.5">0% of gross</p>
+          </div>
+          <div class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl p-4">
+            <p class="text-xs text-[var(--c-text-soft)] mb-1">Self-employment tax</p>
+            <p id="cardSEAmt" class="font-display tabular text-xl font-semibold">$0</p>
+            <p id="cardSEPct" class="text-xs text-[var(--c-text-soft)] mt-0.5">0% of gross</p>
+          </div>
+          <div class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl p-4">
+            <p class="text-xs text-[var(--c-text-soft)] mb-1">Total tax burden</p>
+            <p id="cardTotalAmt" class="font-display tabular text-xl font-semibold">$0</p>
+            <p id="cardTotalPct" class="text-xs text-[var(--c-text-soft)] mt-0.5">0% of gross</p>
+          </div>
+        </div>
+
+        <!-- Comparison bar -->
+        <div class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-2xl p-6">
+          <p class="text-sm font-medium mb-4">Where your gross income goes</p>
+          <div class="w-full h-3 rounded-full overflow-hidden bg-slate-100 flex">
+            <div id="barNet" class="bar-seg h-full" style="width:0%; background:var(--c-emerald)"></div>
+            <div id="barFederal" class="bar-seg h-full" style="width:0%; background:var(--c-indigo)"></div>
+            <div id="barState" class="bar-seg h-full" style="width:0%; background:var(--c-violet)"></div>
+            <div id="barSE" class="bar-seg h-full" style="width:0%; background:var(--c-amber)"></div>
+            <div id="barExpenses" class="bar-seg h-full" style="width:0%; background:var(--c-slate-seg)"></div>
+          </div>
+          <div class="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-[var(--c-text-soft)]">
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm inline-block" style="background:var(--c-emerald)"></span>Net take-home <strong id="legendNet" class="text-[var(--c-text)] font-medium tabular ml-0.5">$0</strong></span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm inline-block" style="background:var(--c-indigo)"></span>Federal <strong id="legendFederal" class="text-[var(--c-text)] font-medium tabular ml-0.5">$0</strong></span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm inline-block" style="background:var(--c-violet)"></span>State <strong id="legendState" class="text-[var(--c-text)] font-medium tabular ml-0.5">$0</strong></span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm inline-block" style="background:var(--c-amber)"></span>SE &amp; FICA <strong id="legendSE" class="text-[var(--c-text)] font-medium tabular ml-0.5">$0</strong></span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm inline-block" style="background:var(--c-slate-seg)"></span>Expenses <strong id="legendExpenses" class="text-[var(--c-text)] font-medium tabular ml-0.5">$0</strong></span>
+          </div>
+        </div>
+
+        <!-- Callouts -->
+        <div id="dualStateCallout" class="hidden bg-[#FFF8EB] border border-[#F3E1B8] rounded-2xl p-5 text-sm leading-relaxed text-[#7A5B14]"></div>
+        <div id="noTaxCallout" class="hidden bg-[var(--c-emerald-soft)] border border-[#BFE8D5] rounded-2xl p-5 text-sm leading-relaxed" style="color:#0B6B4B"></div>
+
+        <!-- Quarterly schedule -->
+        <div class="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-2xl p-6">
+          <p class="text-sm font-medium mb-1">Estimated quarterly payments</p>
+          <p class="text-xs text-[var(--c-text-soft)] mb-4">Assumes even quarterly distribution and standard IRS due dates — confirm exact dates each year.</p>
+          <div class="grid sm:grid-cols-4 gap-3">
+            <div class="rounded-xl border border-[var(--c-border)] p-3">
+              <p class="text-xs text-[var(--c-text-soft)]">Q1 · due Apr 15</p>
+              <p id="q1Fed" class="tabular text-sm font-semibold mt-1">$0 federal + SE</p>
+              <p id="q1State" class="tabular text-xs text-[var(--c-text-soft)] mt-0.5">$0 state</p>
+            </div>
+            <div class="rounded-xl border border-[var(--c-border)] p-3">
+              <p class="text-xs text-[var(--c-text-soft)]">Q2 · due Jun 16</p>
+              <p id="q2Fed" class="tabular text-sm font-semibold mt-1">$0 federal + SE</p>
+              <p id="q2State" class="tabular text-xs text-[var(--c-text-soft)] mt-0.5">$0 state</p>
+            </div>
+            <div class="rounded-xl border border-[var(--c-border)] p-3">
+              <p class="text-xs text-[var(--c-text-soft)]">Q3 · due Sep 15</p>
+              <p id="q3Fed" class="tabular text-sm font-semibold mt-1">$0 federal + SE</p>
+              <p id="q3State" class="tabular text-xs text-[var(--c-text-soft)] mt-0.5">$0 state</p>
+            </div>
+            <div class="rounded-xl border border-[var(--c-border)] p-3">
+              <p class="text-xs text-[var(--c-text-soft)]">Q4 · due Jan 15</p>
+              <p id="q4Fed" class="tabular text-sm font-semibold mt-1">$0 federal + SE</p>
+              <p id="q4State" class="tabular text-xs text-[var(--c-text-soft)] mt-0.5">$0 state</p>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-xs text-[var(--c-text-soft)] leading-relaxed px-1">
+          These figures are simplified estimates built from 2024–2025 federal and state tax brackets. They don't account for
+          local taxes, credits, retirement contributions, or every state's specific rules, and shouldn't be treated as tax
+          advice. Talk with a CPA before making decisions based on these numbers.
+        </p>
+
+      </section>
+    </div>
+  </section>
+
+  <!-- ============ FAQ ============ -->
+  <section id="faq" aria-labelledby="faq-heading" class="border-t border-[var(--c-border)] bg-[var(--c-surface)]">
+    <div class="max-w-3xl mx-auto px-5 sm:px-8 py-14">
+      <h2 id="faq-heading" class="font-display text-2xl font-semibold tracking-tight mb-2">Frequently asked questions</h2>
+      <p class="text-sm text-[var(--c-text-soft)] mb-8">On state tax for remote and B2B contract work.</p>
+
+      <div class="divide-y divide-[var(--c-border)]">
+
+        <details class="py-4 group">
+          <summary class="flex items-center justify-between gap-4 cursor-pointer">
+            <span class="text-sm sm:text-base font-medium">Do 1099 contractors pay state tax based on where they live or where the client is located?</span>
+            <svg class="faq-chevron shrink-0 text-[var(--c-text-soft)]" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </summary>
+          <p class="mt-3 text-sm text-[var(--c-text-soft)] leading-relaxed">
+            Generally, income tax follows where the work is physically performed and where you're a resident, not where your
+            client is headquartered. A contractor based in Texas working remotely for a New York company typically doesn't
+            owe New York state tax, since Texas has no income tax and the work isn't performed in New York.
+          </p>
+        </details>
+
+        <details class="py-4 group">
+          <summary class="flex items-center justify-between gap-4 cursor-pointer">
+            <span class="text-sm sm:text-base font-medium">What is the "convenience of the employer" rule?</span>
+            <svg class="faq-chevron shrink-0 text-[var(--c-text-soft)]" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </summary>
+          <p class="mt-3 text-sm text-[var(--c-text-soft)] leading-relaxed">
+            A small number of states, including New York and Connecticut, tax nonresident employees on income earned while
+            working remotely if the arrangement is for the employee's own convenience rather than a genuine business
+            requirement. It applies mainly to payroll employees, and its reach for independent contractors is narrower and
+            less settled.
+          </p>
+        </details>
+
+        <details class="py-4 group">
+          <summary class="flex items-center justify-between gap-4 cursor-pointer">
+            <span class="text-sm sm:text-base font-medium">Do I need to file a tax return in more than one state?</span>
+            <svg class="faq-chevron shrink-0 text-[var(--c-text-soft)]" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </summary>
+          <p class="mt-3 text-sm text-[var(--c-text-soft)] leading-relaxed">
+            You may, if you're a resident of one state and perform work while physically present in another. Most states
+            offer a credit for taxes paid to another state on the same income, so you typically aren't taxed twice on
+            identical earnings, though you may still need to file two returns.
+          </p>
+        </details>
+
+        <details class="py-4 group">
+          <summary class="flex items-center justify-between gap-4 cursor-pointer">
+            <span class="text-sm sm:text-base font-medium">How much should I set aside for self-employment tax?</span>
+            <svg class="faq-chevron shrink-0 text-[var(--c-text-soft)]" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </summary>
+          <p class="mt-3 text-sm text-[var(--c-text-soft)] leading-relaxed">
+            Self-employment tax covers Social Security and Medicare and totals 15.3% on roughly 92.35% of your net business
+            profit, up to the Social Security wage base, plus 2.9% Medicare on everything above that. Many contractors set
+            aside 25 to 30% of net profit to cover both self-employment and income tax.
+          </p>
+        </details>
+
+        <details class="py-4 group">
+          <summary class="flex items-center justify-between gap-4 cursor-pointer">
+            <span class="text-sm sm:text-base font-medium">What business expenses can reduce my taxable income?</span>
+            <svg class="faq-chevron shrink-0 text-[var(--c-text-soft)]" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </summary>
+          <p class="mt-3 text-sm text-[var(--c-text-soft)] leading-relaxed">
+            Common deductible costs include a home office, business software and subscriptions, equipment, professional
+            services, business travel and mileage, and health insurance premiums for the self-employed. Keeping receipts and
+            a simple expense log throughout the year makes filing far easier.
+          </p>
+        </details>
+
+        <details class="py-4 group">
+          <summary class="flex items-center justify-between gap-4 cursor-pointer">
+            <span class="text-sm sm:text-base font-medium">When are quarterly estimated tax payments due?</span>
+            <svg class="faq-chevron shrink-0 text-[var(--c-text-soft)]" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </summary>
+          <p class="mt-3 text-sm text-[var(--c-text-soft)] leading-relaxed">
+            The IRS generally expects estimated payments four times a year, due around April 15, June 15, September 15, and
+            January 15 of the following year. Many states with an income tax run on a similar quarterly schedule.
+          </p>
+        </details>
+
+        <details class="py-4 group">
+          <summary class="flex items-center justify-between gap-4 cursor-pointer">
+            <span class="text-sm sm:text-base font-medium">Which states have no personal income tax?</span>
+            <svg class="faq-chevron shrink-0 text-[var(--c-text-soft)]" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </summary>
+          <p class="mt-3 text-sm text-[var(--c-text-soft)] leading-relaxed">
+            Texas, Florida, Washington, Nevada, Wyoming, South Dakota, Alaska, and Tennessee don't tax personal income. New
+            Hampshire only taxes interest and dividend income, not wages or business profit.
+          </p>
+        </details>
+
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="border-t border-[var(--c-border)]">
+  <div class="max-w-6xl mx-auto px-5 sm:px-8 py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+    <span class="font-display text-sm font-semibold">Crosswire</span>
+    <p class="text-xs text-[var(--c-text-soft)]">Built for independent contractors and remote B2B professionals. Estimates only — not tax advice.</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  /* =========================================================
+     1. TAX DATA
+     Simplified 2024–2025 federal and state brackets. Rates are
+     estimates for planning purposes only.
+  ========================================================= */
+
+  const FEDERAL_BRACKETS = {
+    single: [[0.10,11600],[0.12,47150],[0.22,100525],[0.24,191950],[0.32,243725],[0.35,609350],[0.37,Infinity]],
+    married:[[0.10,23200],[0.12,94300],[0.22,201050],[0.24,383900],[0.32,487450],[0.35,731200],[0.37,Infinity]]
+  };
+
+  const STANDARD_DEDUCTION = { single:14600, married:29200 };
+  const SS_WAGE_BASE = 168600;                                  // 2024 Social Security wage base
+  const ADDITIONAL_MEDICARE_THRESHOLD = { single:200000, married:250000 };
+
+  // Helper to build a flat-rate bracket set (same for both filing statuses)
+  const flat = (rate) => ({ single:[[rate,Infinity]], married:[[rate,Infinity]] });
+  const noTax = () => flat(0);
+
+  const STATE_DATA = {
+    // ---- No income tax ----
+    TX:{ name:"Texas",         group:"none",  convenience:false, brackets:noTax() },
+    FL:{ name:"Florida",       group:"none",  convenience:false, brackets:noTax() },
+    WA:{ name:"Washington",    group:"none",  convenience:false, brackets:noTax() },
+    NV:{ name:"Nevada",        group:"none",  convenience:false, brackets:noTax() },
+    WY:{ name:"Wyoming",       group:"none",  convenience:false, brackets:noTax() },
+    SD:{ name:"South Dakota",  group:"none",  convenience:false, brackets:noTax() },
+    AK:{ name:"Alaska",        group:"none",  convenience:false, brackets:noTax() },
+    TN:{ name:"Tennessee",     group:"none",  convenience:false, brackets:noTax() },
+
+    // ---- Flat rate ----
+    GA:{ name:"Georgia",         group:"flat", convenience:false, brackets:flat(0.0539) },
+    CO:{ name:"Colorado",        group:"flat", convenience:false, brackets:flat(0.044) },
+    IL:{ name:"Illinois",        group:"flat", convenience:false, brackets:flat(0.0495) },
+    PA:{ name:"Pennsylvania",    group:"flat", convenience:false, brackets:flat(0.0307) },
+    MA:{ name:"Massachusetts",   group:"flat", convenience:false, brackets:flat(0.05) },
+    MI:{ name:"Michigan",        group:"flat", convenience:false, brackets:flat(0.0425) },
+    AZ:{ name:"Arizona",         group:"flat", convenience:false, brackets:flat(0.025) },
+    UT:{ name:"Utah",            group:"flat", convenience:false, brackets:flat(0.0455) },
+    NC:{ name:"North Carolina",  group:"flat", convenience:false, brackets:flat(0.045) },
+    IN:{ name:"Indiana",         group:"flat", convenience:false, brackets:flat(0.0305) },
+
+    // ---- Progressive ----
+    CA:{ name:"California", group:"progressive", convenience:false, brackets:{
+      single:[[0.01,10412],[0.02,24684],[0.04,38959],[0.06,54081],[0.08,68350],[0.093,349137],[0.103,418961],[0.113,698271],[0.123,Infinity]],
+      married:[[0.01,20824],[0.02,49368],[0.04,77918],[0.06,108162],[0.08,136700],[0.093,698274],[0.103,837922],[0.113,1396542],[0.123,Infinity]]
+    }},
+    NY:{ name:"New York", group:"progressive", convenience:true, brackets:{
+      single:[[0.04,8500],[0.045,11700],[0.0525,13900],[0.055,80650],[0.06,215400],[0.0685,1077550],[0.0965,5000000],[0.103,25000000],[0.109,Infinity]],
+      married:[[0.04,17150],[0.045,23600],[0.0525,27900],[0.055,161550],[0.06,323200],[0.0685,2155350],[0.0965,5000000],[0.103,25000000],[0.109,Infinity]]
+    }},
+    NJ:{ name:"New Jersey", group:"progressive", convenience:false, brackets:{
+      single:[[0.014,20000],[0.0175,35000],[0.035,40000],[0.05525,75000],[0.0637,500000],[0.0897,1000000],[0.1075,Infinity]],
+      married:[[0.014,20000],[0.0175,50000],[0.0245,70000],[0.035,80000],[0.05525,150000],[0.0637,500000],[0.0897,1000000],[0.1075,Infinity]]
+    }},
+    VA:{ name:"Virginia", group:"progressive", convenience:false, brackets:{
+      single:[[0.02,3000],[0.03,5000],[0.05,17000],[0.0575,Infinity]],
+      married:[[0.02,3000],[0.03,5000],[0.05,17000],[0.0575,Infinity]]
+    }},
+    OH:{ name:"Ohio", group:"progressive", convenience:false, brackets:{
+      single:[[0,26050],[0.0275,100000],[0.035,Infinity]],
+      married:[[0,26050],[0.0275,100000],[0.035,Infinity]]
+    }},
+    OR:{ name:"Oregon", group:"progressive", convenience:false, brackets:{
+      single:[[0.0475,4300],[0.0675,10750],[0.0875,125000],[0.099,Infinity]],
+      married:[[0.0475,8600],[0.0675,21500],[0.0875,250000],[0.099,Infinity]]
+    }},
+    MN:{ name:"Minnesota", group:"progressive", convenience:false, brackets:{
+      single:[[0.0535,31690],[0.068,104090],[0.0785,193240],[0.0985,Infinity]],
+      married:[[0.0535,46330],[0.068,184040],[0.0785,321450],[0.0985,Infinity]]
+    }},
+    WI:{ name:"Wisconsin", group:"progressive", convenience:false, brackets:{
+      single:[[0.035,14320],[0.044,28640],[0.053,315310],[0.0765,Infinity]],
+      married:[[0.035,19090],[0.044,38190],[0.053,420420],[0.0765,Infinity]]
+    }},
+    SC:{ name:"South Carolina", group:"progressive", convenience:false, brackets:{
+      single:[[0,3460],[0.03,17330],[0.064,Infinity]],
+      married:[[0,3460],[0.03,17330],[0.064,Infinity]]
+    }},
+    CT:{ name:"Connecticut", group:"progressive", convenience:true, brackets:{
+      single:[[0.02,10000],[0.045,50000],[0.055,100000],[0.06,200000],[0.065,250000],[0.069,500000],[0.0699,Infinity]],
+      married:[[0.02,20000],[0.045,100000],[0.055,200000],[0.06,400000],[0.065,500000],[0.069,1000000],[0.0699,Infinity]]
+    }},
+    MD:{ name:"Maryland", group:"progressive", convenience:false, brackets:{
+      // state rate plus an approximate average local income tax baked in
+      single:[[0.048,1000],[0.058,2000],[0.068,3000],[0.0755,100000],[0.078,125000],[0.0805,150000],[0.083,250000],[0.0855,Infinity]],
+      married:[[0.048,1000],[0.058,2000],[0.068,3000],[0.0755,150000],[0.078,175000],[0.0805,225000],[0.083,300000],[0.0855,Infinity]]
+    }}
+  };
+
+  const GROUP_LABEL = { none:"No income tax", flat:"Flat rate", progressive:"Progressive" };
+
+  /* =========================================================
+     2. CALCULATION HELPERS
+  ========================================================= */
+
+  // Generic marginal / progressive tax calculator.
+  // brackets: array of [rate, cumulativeCeiling], ascending.
+  function progressiveTax(income, brackets){
+    if (income <= 0) return 0;
+    let tax = 0, prevCap = 0;
+    for (const [rate, cap] of brackets){
+      if (income <= prevCap) break;
+      const sliceAmount = Math.min(income, cap) - prevCap;
+      tax += sliceAmount * rate;
+      prevCap = cap;
+    }
+    return tax;
+  }
+
+  // Self-employment tax (Social Security + Medicare) on net business profit.
+  function calcSelfEmploymentTax(netProfit, filing){
+    if (netProfit <= 0){
+      return { ssTax:0, medicareTax:0, additionalMedicare:0, total:0, deductibleHalf:0 };
+    }
+    const netEarnings = netProfit * 0.9235;                    // 92.35% rule
+    const ssTax = Math.min(netEarnings, SS_WAGE_BASE) * 0.124;
+    const medicareTax = netEarnings * 0.029;
+    const threshold = ADDITIONAL_MEDICARE_THRESHOLD[filing];
+    const additionalMedicare = Math.max(netEarnings - threshold, 0) * 0.009;
+    const total = ssTax + medicareTax + additionalMedicare;
+    // Half of SS + Medicare (not the additional 0.9%) is deductible from federal taxable income.
+    const deductibleHalf = (ssTax + medicareTax) / 2;
+    return { ssTax, medicareTax, additionalMedicare, total, deductibleHalf };
+  }
+
+  function describeState(code){
+    const s = STATE_DATA[code];
+    if (!s) return "";
+    if (s.group === "none") return "No state income tax";
+    if (s.group === "flat") return "Flat rate, " + (s.brackets.single[0][0]*100).toFixed(2).replace(/\.?0+$/,"") + "%";
+    const top = s.brackets.single[s.brackets.single.length-1][0] * 100;
+    return "Progressive rate, up to " + top.toFixed(1).replace(/\.0$/,"") + "%";
+  }
+
+  function fmtCurrency(n){
+    return new Intl.NumberFormat("en-US", { style:"currency", currency:"USD", maximumFractionDigits:0 }).format(Math.max(n,0));
+  }
+  function fmtPct(n){
+    return (n*100).toFixed(1) + "%";
+  }
+
+  /* =========================================================
+     3. CORE CALCULATION
+  ========================================================= */
+
+  function calculate(){
+    const origin = els.originState.value;
+    const work = els.workState.value;
+    const filing = state.filing;
+    const gross = Math.max(parseFloat(els.grossIncome.value) || 0, 0);
+    const expenses = Math.max(parseFloat(els.bizExpenses.value) || 0, 0);
+
+    const netProfit = Math.max(gross - expenses, 0);           // business profit before tax
+
+    const se = calcSelfEmploymentTax(netProfit, filing);
+
+    // Federal taxable income: profit minus standard deduction minus half of SE tax.
+    const stdDeduction = STANDARD_DEDUCTION[filing];
+    const federalTaxable = Math.max(netProfit - stdDeduction - se.deductibleHalf, 0);
+    const federalTax = progressiveTax(federalTaxable, FEDERAL_BRACKETS[filing]);
+
+    // State tax: simplified — apply each state's brackets to net profit,
+    // then use the higher of residency/work state (approximating a full credit
+    // from the resident state for tax paid to the work state).
+    const originTax = STATE_DATA[origin] ? progressiveTax(netProfit, STATE_DATA[origin].brackets[filing]) : 0;
+    const workTax = STATE_DATA[work] ? progressiveTax(netProfit, STATE_DATA[work].brackets[filing]) : 0;
+    const sameState = origin === work;
+    const stateTax = sameState ? originTax : Math.max(originTax, workTax);
+
+    const totalTax = federalTax + stateTax + se.total;
+    const netIncome = gross - expenses - totalTax;
+    const effectiveRate = gross > 0 ? totalTax / gross : 0;
+
+    return {
+      origin, work, filing, gross, expenses, netProfit,
+      se, federalTax, originTax, workTax, stateTax, sameState,
+      totalTax, netIncome, effectiveRate
+    };
+  }
+
+  /* =========================================================
+     4. DOM REFERENCES + STATE
+  ========================================================= */
+
+  const els = {
+    originState: document.getElementById("originState"),
+    workState: document.getElementById("workState"),
+    originDesc: document.getElementById("originDesc"),
+    workDesc: document.getElementById("workDesc"),
+    swapBtn: document.getElementById("swapBtn"),
+    swapIcon: document.getElementById("swapIcon"),
+    grossIncome: document.getElementById("grossIncome"),
+    bizExpenses: document.getElementById("bizExpenses"),
+
+    netIncomeBig: document.getElementById("netIncomeBig"),
+    grossSub: document.getElementById("grossSub"),
+    effectiveRateChip: document.getElementById("effectiveRateChip"),
+
+    cardFederalAmt: document.getElementById("cardFederalAmt"),
+    cardFederalPct: document.getElementById("cardFederalPct"),
+    cardStateLabel: document.getElementById("cardStateLabel"),
+    cardStateAmt: document.getElementById("cardStateAmt"),
+    cardStatePct: document.getElementById("cardStatePct"),
+    cardSEAmt: document.getElementById("cardSEAmt"),
+    cardSEPct: document.getElementById("cardSEPct"),
+    cardTotalAmt: document.getElementById("cardTotalAmt"),
+    cardTotalPct: document.getElementById("cardTotalPct"),
+
+    barNet: document.getElementById("barNet"),
+    barFederal: document.getElementById("barFederal"),
+    barState: document.getElementById("barState"),
+    barSE: document.getElementById("barSE"),
+    barExpenses: document.getElementById("barExpenses"),
+    legendNet: document.getElementById("legendNet"),
+    legendFederal: document.getElementById("legendFederal"),
+    legendState: document.getElementById("legendState"),
+    legendSE: document.getElementById("legendSE"),
+    legendExpenses: document.getElementById("legendExpenses"),
+
+    dualStateCallout: document.getElementById("dualStateCallout"),
+    noTaxCallout: document.getElementById("noTaxCallout"),
+
+    q1Fed: document.getElementById("q1Fed"), q1State: document.getElementById("q1State"),
+    q2Fed: document.getElementById("q2Fed"), q2State: document.getElementById("q2State"),
+    q3Fed: document.getElementById("q3Fed"), q3State: document.getElementById("q3State"),
+    q4Fed: document.getElementById("q4Fed"), q4State: document.getElementById("q4State"),
+  };
+
+  const state = { filing: "single", period: "annual" };
+  const PERIOD_DIVISOR = { annual:1, monthly:12, quarterly:4 };
+
+  /* =========================================================
+     5. POPULATE STATE SELECTS
+  ========================================================= */
+
+  function populateStateSelects(){
+    const groups = { none:[], flat:[], progressive:[] };
+    Object.keys(STATE_DATA).forEach(code => groups[STATE_DATA[code].group].push(code));
+    Object.keys(groups).forEach(g => groups[g].sort((a,b) => STATE_DATA[a].name.localeCompare(STATE_DATA[b].name)));
+
+    [els.originState, els.workState].forEach(select => {
+      ["none","flat","progressive"].forEach(g => {
+        const optgroup = document.createElement("optgroup");
+        optgroup.label = GROUP_LABEL[g];
+        groups[g].forEach(code => {
+          const opt = document.createElement("option");
+          opt.value = code;
+          opt.textContent = STATE_DATA[code].name;
+          optgroup.appendChild(opt);
+        });
+        select.appendChild(optgroup);
+      });
+    });
+
+    els.originState.value = "CA";
+    els.workState.value = "CA";
+  }
+
+  /* =========================================================
+     6. RENDER
+  ========================================================= */
+
+  function render(){
+    const r = calculate();
+    const div = PERIOD_DIVISOR[state.period];
+    const periodWord = { annual:"", monthly:"/mo", quarterly:"/qtr" }[state.period];
+
+    // Headline
+    els.netIncomeBig.textContent = fmtCurrency(r.netIncome / div) + (state.period !== "annual" ? "" : "");
+    els.grossSub.textContent = "of " + fmtCurrency(r.gross) + " gross, after taxes and business expenses";
+    els.effectiveRateChip.textContent = fmtPct(r.effectiveRate);
+
+    // Metric cards
+    els.cardFederalAmt.textContent = fmtCurrency(r.federalTax / div);
+    els.cardFederalPct.textContent = (r.gross>0 ? fmtPct(r.federalTax/r.gross) : "0.0%") + " of gross";
+
+    const stateLabel = r.sameState ? r.origin : (r.origin + " + " + r.work);
+    els.cardStateLabel.textContent = "State income tax (" + stateLabel + ")";
+    els.cardStateAmt.textContent = fmtCurrency(r.stateTax / div);
+    els.cardStatePct.textContent = (r.gross>0 ? fmtPct(r.stateTax/r.gross) : "0.0%") + " of gross";
+
+    els.cardSEAmt.textContent = fmtCurrency(r.se.total / div);
+    els.cardSEPct.textContent = (r.gross>0 ? fmtPct(r.se.total/r.gross) : "0.0%") + " of gross";
+
+    els.cardTotalAmt.textContent = fmtCurrency(r.totalTax / div);
+    els.cardTotalPct.textContent = fmtPct(r.effectiveRate) + " of gross";
+
+    // Comparison bar (always shown as share of gross, independent of period toggle)
+    const safeGross = r.gross > 0 ? r.gross : 1;
+    const pct = (n) => Math.max(Math.min((n/safeGross)*100, 100), 0);
+    els.barNet.style.width = pct(r.netIncome) + "%";
+    els.barFederal.style.width = pct(r.federalTax) + "%";
+    els.barState.style.width = pct(r.stateTax) + "%";
+    els.barSE.style.width = pct(r.se.total) + "%";
+    els.barExpenses.style.width = pct(r.expenses) + "%";
+
+    els.legendNet.textContent = fmtCurrency(r.netIncome);
+    els.legendFederal.textContent = fmtCurrency(r.federalTax);
+    els.legendState.textContent = fmtCurrency(r.stateTax);
+    els.legendSE.textContent = fmtCurrency(r.se.total);
+    els.legendExpenses.textContent = fmtCurrency(r.expenses);
+
+    // Callouts
+    renderCallouts(r);
+
+    // Quarterly schedule (always true quarterly figures, independent of the period toggle)
+    const fedSEQuarter = fmtCurrency((r.federalTax + r.se.total) / 4) + " federal + SE";
+    const stateQuarter = fmtCurrency(r.stateTax / 4) + " state";
+    [els.q1Fed, els.q2Fed, els.q3Fed, els.q4Fed].forEach(el => el.textContent = fedSEQuarter);
+    [els.q1State, els.q2State, els.q3State, els.q4State].forEach(el => el.textContent = stateQuarter);
+
+    // State descriptions
+    els.originDesc.textContent = describeState(r.origin);
+    els.workDesc.textContent = describeState(r.work);
+  }
+
+  function renderCallouts(r){
+    // Dual-state note: shown whenever residency and work state differ.
+    if (!r.sameState){
+      const originName = STATE_DATA[r.origin].name;
+      const workName = STATE_DATA[r.work].name;
+      let text = "You live in " + originName + " and work from " + workName + ". Most states credit tax paid to a " +
+        "nonresident work state against your resident state's bill, so this estimate uses the higher of the two states' " +
+        "tax as your effective liability, assuming a full credit applies.";
+      if (STATE_DATA[r.origin].convenience && r.originTax > r.workTax){
+        text += " " + originName + " applies a \"convenience of the employer\" rule, which can mean it taxes your full " +
+          "income even while you work remotely from " + workName + ", unless a narrow exception applies. Your real " +
+          "liability could be higher than shown here.";
+      }
+      els.dualStateCallout.textContent = text;
+      els.dualStateCallout.classList.remove("hidden");
+    } else {
+      els.dualStateCallout.classList.add("hidden");
+    }
+
+    // No-tax-state savings insight
+    if (r.stateTax > 0){
+      els.noTaxCallout.textContent = "Basing your residency in a state with no income tax, such as Texas or Florida, " +
+        "could put an estimated " + fmtCurrency(r.stateTax) + " more in your pocket each year, before accounting for " +
+        "cost of living or moving costs.";
+      els.noTaxCallout.classList.remove("hidden");
+    } else {
+      els.noTaxCallout.classList.add("hidden");
+    }
+  }
+
+  /* =========================================================
+     7. EVENT WIRING
+  ========================================================= */
+
+  function setActiveButtonGroup(buttons, activeEl){
+    buttons.forEach(btn => {
+      const isActive = btn === activeEl;
+      btn.setAttribute("aria-pressed", String(isActive));
+      btn.classList.toggle("bg-white", isActive);
+      btn.classList.toggle("shadow-sm", isActive);
+      btn.classList.toggle("text-[var(--c-text)]", isActive);
+      btn.classList.toggle("text-[var(--c-text-soft)]", !isActive);
+    });
+  }
+
+  function initToggles(){
+    const filingBtns = Array.from(document.querySelectorAll(".filing-btn"));
+    filingBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        state.filing = btn.dataset.filing;
+        setActiveButtonGroup(filingBtns, btn);
+        render();
+      });
+    });
+    setActiveButtonGroup(filingBtns, filingBtns[0]);
+
+    const periodBtns = Array.from(document.querySelectorAll(".period-btn"));
+    periodBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        state.period = btn.dataset.period;
+        setActiveButtonGroup(periodBtns, btn);
+        render();
+      });
+    });
+    setActiveButtonGroup(periodBtns, periodBtns[0]);
+  }
+
+  function initInputs(){
+    [els.originState, els.workState].forEach(el => el.addEventListener("change", render));
+    [els.grossIncome, els.bizExpenses].forEach(el => el.addEventListener("input", render));
+
+    els.swapBtn.addEventListener("click", () => {
+      const a = els.originState.value, b = els.workState.value;
+      els.originState.value = b;
+      els.workState.value = a;
+      els.swapIcon.classList.toggle("swap-spin");
+      render();
+    });
+  }
+
+  /* =========================================================
+     8. INIT
+  ========================================================= */
+
+  populateStateSelects();
+  initToggles();
+  initInputs();
+  render();
+
+})();
+</script>
+
+</body>
+</html>
